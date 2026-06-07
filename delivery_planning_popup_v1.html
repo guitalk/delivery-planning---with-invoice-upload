@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFC — Delivery Planning</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #f4f4f4; font-family: 'IBM Plex Sans', sans-serif; color: #161616; display: flex; height: 100vh; overflow: hidden; }
+
+/* ────────────────────────────────
+   SIDEBAR
+──────────────────────────────── */
+.sidebar { width: 256px; flex-shrink: 0; background: #fff; display: flex; flex-direction: column; border-right: 1px solid #e0e0e0; height: 100vh; overflow-y: auto; }
+.sidebar-header { background: #2e9d3f; color: #fff; padding: 0 16px; height: 56px; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; letter-spacing: -0.2px; flex-shrink: 0; }
+.sidebar-search { padding: 12px 12px 8px; }
+.sidebar-search input { width: 100%; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; font-size: 14px; font-family: inherit; outline: none; background: #f9f9f9; color: #161616; }
+.sidebar-search input:focus { border-color: #2e9d3f; background: #fff; }
+.nav-section { padding: 6px 0; }
+.nav-group-label { font-size: 12px; font-weight: 600; color: #8d8d8d; letter-spacing: 0.5px; padding: 10px 16px 4px; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 14px; color: #393939; cursor: pointer; transition: background 0.12s; }
+.nav-item:hover { background: #f4f4f4; }
+.nav-item.active { background: #e8f5e9; color: #2e7d32; font-weight: 600; border-left: 3px solid #2e9d3f; }
+.nav-item svg { opacity: 0.6; flex-shrink: 0; }
+.nav-item.active svg { opacity: 1; }
+.nav-divider { height: 1px; background: #e0e0e0; margin: 6px 0; }
+
+/* ────────────────────────────────
+   MAIN AREA
+──────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Topbar */
+.topbar { background: #2e9d3f; color: #fff; height: 56px; display: flex; align-items: center; padding: 0 20px; gap: 14px; flex-shrink: 0; }
+.topbar-loc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.topbar-loc svg { opacity: 0.8; }
+
+/* Page header */
+.page-header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 16px 24px; display: flex; align-items: center; flex-shrink: 0; }
+.page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; flex: 1; }
+.btn-add { background: #2e9d3f; color: #fff; border: none; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 7px; font-family: inherit; letter-spacing: -0.1px; }
+.btn-add:hover { background: #277e34; }
+
+/* Filter bar */
+.filter-bar { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.cp-select { display: flex; align-items: center; gap: 8px; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; background: #fff; min-width: 300px; }
+.cp-name { font-weight: 600; flex: 1; }
+.cp-deal-tag { color: #8d8d8d; font-size: 13px; }
+.deal-summary-btn { display: flex; align-items: center; gap: 6px; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: 500; cursor: pointer; background: #fff; font-family: inherit; position: relative; }
+.deal-summary-btn .badge { background: #e65100; color: #fff; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 6px; margin-left: 2px; }
+.week-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.this-week-btn { border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: 500; background: #fff; cursor: pointer; font-family: inherit; }
+.this-week-btn:hover { background: #f4f4f4; }
+.week-arrow { border: 1.5px solid #e0e0e0; border-radius: 6px; width: 34px; height: 38px; display: grid; place-items: center; cursor: pointer; background: #fff; }
+.week-arrow:hover { background: #f4f4f4; }
+.week-range { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; padding: 0 4px; color: #393939; }
+
+/* Calendar scroll area */
+.cal-scroll { flex: 1; overflow-y: auto; }
+
+/* Calendar */
+.calendar { background: #fff; }
+.cal-week-header { display: grid; grid-template-columns: 140px repeat(7, 1fr); border-bottom: 2px solid #e0e0e0; background: #fff; position: sticky; top: 0; z-index: 10; }
+.cwh-corner { padding: 10px 12px; border-right: 1px solid #e0e0e0; display: flex; align-items: center; font-size: 11px; font-weight: 700; color: #8d8d8d; letter-spacing: 0.5px; }
+.cwh-day { padding: 10px 8px; text-align: center; border-right: 1px solid #e0e0e0; }
+.cwh-day .dow { font-size: 11px; font-weight: 700; color: #8d8d8d; letter-spacing: 0.4px; text-transform: uppercase; }
+.cwh-day .dom { font-size: 20px; font-weight: 700; color: #393939; margin-top: 1px; display: inline-block; width: 36px; height: 36px; line-height: 36px; border-radius: 50%; }
+.cwh-day.today { background: #e8f4fd; }
+.cwh-day.today .dom { background: #1565c0; color: #fff; border-radius: 50%; }
+.cwh-day.today .dow { color: #1565c0; }
+
+/* Row group */
+.row-group { border-bottom: 2px solid #e0e0e0; }
+.row-head { display: grid; grid-template-columns: 140px 1fr; border-bottom: 1px solid #e0e0e0; }
+.rh-label { padding: 10px 12px; border-right: 1px solid #e0e0e0; display: flex; align-items: center; gap: 7px; }
+.rh-expand { background: none; border: none; cursor: pointer; padding: 0; display: grid; place-items: center; color: #8d8d8d; }
+.rh-icon { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+.rh-icon.planned   { background: #e3f2fd; }
+.rh-icon.confirmed { background: #e8f5e9; }
+.rh-icon.transit   { background: #fff3e0; }
+.rh-text { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
+.rh-text.planned   { color: #1565c0; }
+.rh-text.confirmed { color: #2e7d32; }
+.rh-text.transit   { color: #e65100; }
+.rh-meta { padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 10px; border-radius: 4px; }
+.tag.draggable  { background: #e3f2fd; color: #1565c0; }
+.tag.action-req { background: #fff3e0; color: #e65100; }
+.tag.read-only  { background: #f4f4f4; color: #6f6f6f; }
+.rh-count { background: #e0e0e0; color: #393939; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px; }
+.rh-mt { font-size: 13px; font-weight: 600; color: #393939; }
+.rh-rem { font-size: 13px; color: #8d8d8d; }
+
+/* Calendar body row */
+.cal-row { display: grid; grid-template-columns: 140px repeat(7, 1fr); min-height: 110px; }
+.cal-row-label { border-right: 1px solid #e0e0e0; }
+.cal-cell { padding: 6px 6px 8px; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 5px; }
+.cal-cell.today-col { background: #f4f9ff; }
+
+/* Delivery card */
+.dcard {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 8px 10px 8px 13px; cursor: pointer; position: relative;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  overflow: hidden;
+}
+.dcard::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+}
+.dcard.planned::before   { background: #1976d2; }
+.dcard.confirmed::before { background: #2e9d3f; }
+.dcard.transit::before   { background: #f57c00; }
+.dcard:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); border-color: #b0b0b0; }
+.dcard.active { border-color: #2e9d3f; box-shadow: 0 0 0 2px rgba(46,157,63,0.25); }
+
+.dcard-qty { font-size: 17px; font-weight: 700; display: inline; letter-spacing: -0.5px; }
+.dcard-unit { font-size: 13px; font-weight: 500; color: #6f6f6f; margin-left: 2px; }
+.dcard-id { font-size: 12px; color: #8d8d8d; float: right; margin-top: 1px; }
+.dcard-clear { clear: both; }
+.dcard-transporter { font-size: 12px; color: #393939; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcard-driver { font-size: 11.5px; color: #8d8d8d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcard-driver.no-driver { color: #da1e28; }
+
+.show-more { border: 1.5px dashed #c6c6c6; border-radius: 6px; padding: 5px 8px; font-size: 12px; font-weight: 600; color: #0f62fe; cursor: pointer; text-align: center; background: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.show-more:hover { background: #e8f0fe; }
+
+/* ────────────────────────────────
+   MODAL OVERLAY
+──────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 500; display: none; place-items: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.show { display: grid; }
+
+.modal {
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+  width: 560px; max-height: 92vh; overflow-y: auto;
+  animation: modalIn 0.18s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Modal header */
+.modal-head {
+  padding: 20px 24px 16px;
+  display: flex; align-items: flex-start; gap: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.modal-title-block { flex: 1; }
+.modal-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.modal-id { font-size: 13px; color: #8d8d8d; margin-top: 2px; }
+.modal-badge { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.2px; align-self: flex-start; margin-top: 4px; }
+.mb-confirmed { background: #fff3e0; color: #e65100; }
+.mb-transit   { background: #e3f2fd; color: #1565c0; }
+.mb-delivered { background: #e8f5e9; color: #2e7d32; }
+.modal-close { background: none; border: none; cursor: pointer; color: #6f6f6f; padding: 4px; border-radius: 4px; }
+.modal-close:hover { background: #f4f4f4; color: #161616; }
+
+/* Modal deal card */
+.modal-deal-card {
+  margin: 16px 24px 0;
+  background: #f0faf1; border: 1.5px solid #a8d5b0; border-radius: 8px;
+  padding: 12px 16px; display: flex; align-items: center;
+}
+.mdc-left { flex: 1; }
+.mdc-name { font-size: 15px; font-weight: 700; }
+.mdc-sub { font-size: 13px; color: #6f6f6f; margin-top: 2px; }
+.mdc-rate-label { font-size: 11px; font-weight: 700; color: #8d8d8d; letter-spacing: 0.5px; text-align: right; }
+.mdc-rate { font-size: 18px; font-weight: 700; color: #2e7d32; text-align: right; }
+
+/* Modal fields */
+.modal-fields { padding: 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Truck size */
+.truck-row { display: flex; gap: 6px; align-items: center; }
+.ts {
+  flex: 1; border: 1.5px solid #e0e0e0; border-radius: 6px;
+  height: 44px; display: grid; place-items: center;
+  font-size: 16px; font-weight: 600; cursor: pointer; color: #6f6f6f;
+  transition: border-color 0.12s, background 0.12s;
+}
+.ts:hover { border-color: #2e9d3f; color: #2e7d32; }
+.ts.sel { border-color: #2e9d3f; background: #f0faf1; color: #2e7d32; }
+.ts-mt { flex: 0.6; border: 1.5px solid #e0e0e0; border-radius: 6px; height: 44px; display: grid; place-items: center; font-size: 14px; font-weight: 600; color: #8d8d8d; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 600; color: #6f6f6f; letter-spacing: 0.3px; }
+.field input, .field select {
+  border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 10px 12px;
+  font-size: 14px; font-family: inherit; outline: none; color: #161616; background: #fff;
+}
+.field input:focus, .field select:focus { border-color: #2e9d3f; box-shadow: 0 0 0 2px rgba(46,157,63,0.12); }
+.status-radios { display: flex; align-items: center; gap: 20px; height: 44px; }
+.radio-opt { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.radio-opt input { accent-color: #2e9d3f; width: 18px; height: 18px; }
+
+/* ── Action strip (the new part) ── */
+.action-strip-section { margin: 0 24px 4px; }
+.action-strip { border-radius: 8px; overflow: hidden; border: 1.5px solid transparent; }
+.action-strip.s-loading   { border-color: #ffe082; }
+.action-strip.s-unloading { border-color: #ce93d8; }
+.action-strip.s-complete  { border-color: #a5d6a7; }
+
+.as-head { padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
+.as-head.loading   { background: #fff8e1; color: #e65100; }
+.as-head.unloading { background: #f3e5f5; color: #8e24aa; }
+.as-head.complete  { background: #e8f5e9; color: #2e7d32; }
+
+.as-body { padding: 10px 16px; font-size: 13px; line-height: 1.55; color: #525252; }
+.as-body.loading   { background: #fffde7; }
+.as-body.unloading { background: #fdf4ff; }
+.as-body.complete  { background: #f4fbf4; }
+.as-body strong { color: #161616; }
+
+.as-cta {
+  display: flex; align-items: center; justify-content: space-between;
+  border: none; width: 100%; padding: 13px 16px;
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: -0.1px;
+}
+.as-cta.loading   { background: #ffd54f; color: #5d4000; }
+.as-cta.loading:hover { background: #ffca28; }
+.as-cta.unloading { background: #e1bee7; color: #4a148c; }
+.as-cta.unloading:hover { background: #ce93d8; }
+.as-cta.complete  { background: #c8e6c9; color: #1b5e20; cursor: default; }
+
+/* ── Summary preview in complete strip ── */
+.complete-metrics { display: flex; gap: 20px; flex-wrap: wrap; }
+.cm-item { display: flex; flex-direction: column; gap: 1px; }
+.cm-val { font-size: 18px; font-weight: 700; color: #161616; }
+.cm-label { font-size: 11px; color: #8d8d8d; font-weight: 500; }
+
+/* Modal footer */
+.modal-footer { padding: 16px 24px; border-top: 1px solid #e0e0e0; display: flex; align-items: center; gap: 10px; }
+.btn-primary { background: #2e9d3f; color: #fff; border: none; border-radius: 6px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-primary:hover { background: #277e34; }
+.btn-ghost { background: none; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 11px 20px; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; color: #393939; }
+.btn-ghost:hover { background: #f4f4f4; }
+.btn-link { background: none; border: none; color: #0f62fe; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.btn-link:hover { text-decoration: underline; }
+
+/* Proto bar */
+.proto-bar { background: #1a237e; color: #fff; padding: 8px 24px; font-size: 12px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.proto-bar span { opacity: 0.6; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 11.5px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    Tablet View
+  </div>
+  <div class="sidebar-search">
+    <input type="text" placeholder="Search">
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-label">Masterdata <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg> Agri-Partner</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 9V7h-2V5a2 2 0 00-2-2H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2h2v-2h-2v-2h2v-2h-2V9h2z"/></svg> Equipments</div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-group-label">Biomass <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></div>
+    <div class="nav-group-label" style="font-size:11px;color:#6f6f6f;text-transform:none;font-weight:600;padding:6px 16px 2px;">Deals</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14l4-4h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg> Inward Product Deal</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3a3 3 0 110 6 3 3 0 010-6zm0 14.2a7.2 7.2 0 01-6-3.22c.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08a7.2 7.2 0 01-6 3.22z"/></svg> Aggregation Deal</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3v18h18V3zm-2 16H5V5h14v14z"/></svg> Outward Product Deal</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 006 0h6a3 3 0 006 0h2v-5l-3-4z"/></svg> Transport Deal</div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-group-label">Operations <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg> Aggregation Plan</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg> Scheduling</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/></svg> Ledger</div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-group-label">Deliveries <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></div>
+    <div class="nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg> Delivery Plan</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zm0-10h4v6h6v-6h4l-7-7-7 7z"/></svg> Inward</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/></svg> Outward</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z"/></svg> Inventory</div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-group-label">Settlement <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg> Cashflow</div>
+    <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/></svg> Invoices</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Proto bar -->
+  <div class="proto-bar">
+    <span>Click any card to open modal. Each shows a different action state:</span>
+    <div class="leg"><div class="leg-dot" style="background:#ff9800"></div> Logistics pending (Planned)</div>
+    <div class="leg"><div class="leg-dot" style="background:#1976d2"></div> Awaiting loading info</div>
+    <div class="leg"><div class="leg-dot" style="background:#9c27b0"></div> Awaiting unloading</div>
+    <div class="leg"><div class="leg-dot" style="background:#2e9d3f"></div> Delivered</div>
+  </div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-loc">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+      Antroli Biomass Bank, Solapur
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+    </div>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="opacity:0.85"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V10c0-3.07-1.63-5.64-4.5-6.32V3a1.5 1.5 0 00-3 0v.68C7.64 4.36 6 6.92 6 10v6l-2 2v1h16v-1l-2-2z"/></svg>
+    <div style="width:34px;height:34px;background:#fff;border-radius:50%;overflow:hidden;display:grid;place-items:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#2e9d3f"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>
+    </div>
+  </div>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-title">Delivery Planning</div>
+    <button class="btn-add">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      Add Deliveries
+    </button>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <div class="cp-select">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#8d8d8d"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 001.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 00-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 005.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14z"/></svg>
+      <span class="cp-name">Reliance Industries Limited</span>
+      <span class="cp-deal-tag">• Deal 7567</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#8d8d8d"><path d="M7 10l5 5 5-5z"/></svg>
+    </div>
+    <button class="deal-summary-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#e65100"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V10c0-3.07-1.63-5.64-4.5-6.32V3a1.5 1.5 0 00-3 0v.68C7.64 4.36 6 6.92 6 10v6l-2 2v1h16v-1l-2-2z"/></svg>
+      Deal Summary
+      <span class="badge">12</span>
+    </button>
+    <div class="week-nav">
+      <button class="this-week-btn">This Week</button>
+      <button class="week-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+      <div class="week-range">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#8d8d8d"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>
+        Apr 20 – 26, 2026
+      </div>
+      <button class="week-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Calendar scroll -->
+  <div class="cal-scroll">
+  <div class="calendar">
+
+    <!-- Week header -->
+    <div class="cal-week-header">
+      <div class="cwh-corner">WEEK VIEW</div>
+      <div class="cwh-day"><div class="dow">MON</div><div class="dom">20</div></div>
+      <div class="cwh-day"><div class="dow">TUE</div><div class="dom">21</div></div>
+      <div class="cwh-day"><div class="dow">WED</div><div class="dom">22</div></div>
+      <div class="cwh-day today"><div class="dow">THU</div><div class="dom">23</div><div style="font-size:9px;font-weight:700;color:#1565c0;letter-spacing:0.3px;margin-top:1px">TODAY</div></div>
+      <div class="cwh-day"><div class="dow">FRI</div><div class="dom">24</div></div>
+      <div class="cwh-day"><div class="dow">SAT</div><div class="dom">25</div></div>
+      <div class="cwh-day"><div class="dow">SUN</div><div class="dom">26</div></div>
+    </div>
+
+    <!-- ── PLANNED ROW ── -->
+    <div class="row-group">
+      <div class="row-head">
+        <div class="rh-label">
+          <button class="rh-expand"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></button>
+          <div class="rh-icon planned"><svg width="12" height="12" viewBox="0 0 24 24" fill="#1976d2"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg></div>
+          <span class="rh-text planned">PLANNED</span>
+        </div>
+        <div class="rh-meta">
+          <div class="tag draggable">DRAGGABLE</div>
+          <div class="rh-count">9 Deliveries</div>
+          <div class="rh-mt">170 MT</div>
+          <div class="rh-rem">0 MT remaining</div>
+        </div>
+      </div>
+      <div class="cal-row">
+        <div class="cal-row-label cal-cell"></div>
+        <!-- Mon: empty -->
+        <div class="cal-cell"></div>
+        <!-- Tue -->
+        <div class="cal-cell">
+          <div class="dcard planned" onclick="openModal('135114','planned-pending','20 MT','135114')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135114</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+        </div>
+        <!-- Wed -->
+        <div class="cal-cell">
+          <div class="dcard planned" onclick="openModal('135117','planned-pending','20 MT','135117')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135117</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="dcard planned" onclick="openModal('135118','planned-pending','25 MT','135118')">
+            <span class="dcard-qty">25</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135118</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+        </div>
+        <!-- Thu (today) -->
+        <div class="cal-cell today-col">
+          <div class="dcard planned" onclick="openModal('135120','planned-pending','20 MT','135120')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135120</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="dcard planned" onclick="openModal('135121','planned-pending','20 MT','135121')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135121</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="dcard planned" onclick="openModal('135122','planned-pending','10 MT','135122')">
+            <span class="dcard-qty">10</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135122</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="show-more">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z" transform="rotate(180 12 12)"/></svg>
+            Show (2) more
+          </div>
+        </div>
+        <!-- Fri -->
+        <div class="cal-cell">
+          <div class="dcard planned" onclick="openModal('135123','planned-pending','20 MT','135123')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135123</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="dcard planned" onclick="openModal('135124','planned-pending','20 MT','135124')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135124</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+        </div>
+        <!-- Sat -->
+        <div class="cal-cell">
+          <div class="dcard planned" onclick="openModal('135125','planned-pending','20 MT','135125')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135125</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">—</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+        </div>
+        <!-- Sun -->
+        <div class="cal-cell"></div>
+      </div>
+    </div>
+
+    <!-- ── CONFIRMED ROW ── -->
+    <div class="row-group">
+      <div class="row-head">
+        <div class="rh-label">
+          <button class="rh-expand"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></button>
+          <div class="rh-icon confirmed"><svg width="12" height="12" viewBox="0 0 24 24" fill="#2e9d3f"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+          <span class="rh-text confirmed">CONFIRMED</span>
+        </div>
+        <div class="rh-meta">
+          <div class="tag action-req">ACTION REQUIRED</div>
+          <div class="rh-count">9 Deliveries</div>
+          <div class="rh-mt">180 MT</div>
+        </div>
+      </div>
+      <div class="cal-row">
+        <div class="cal-row-label cal-cell"></div>
+        <!-- Mon: empty -->
+        <div class="cal-cell"></div>
+        <!-- Tue — awaiting loading info -->
+        <div class="cal-cell">
+          <div class="dcard confirmed" onclick="openModal('135108','awaiting-loading','20 MT','135108','GreenHaul Carriers','Santhosh • 7082282572')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135108</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">GreenHaul Carriers</div>
+            <div class="dcard-driver">Santhosh • 7082282572</div>
+          </div>
+          <div class="dcard confirmed" onclick="openModal('135109','awaiting-loading','20 MT','135109','BFC Transport Agency')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135109</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">BFC Transport Agency</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+          <div class="dcard confirmed" onclick="openModal('135110','complete','25 MT','135110','Reliance Industries Limited','Prakash Rao • 9634238014')">
+            <span class="dcard-qty">25</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135110</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">Reliance Industries Limited</div>
+            <div class="dcard-driver">Prakash Rao • 9634238014</div>
+          </div>
+          <div class="show-more">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z" transform="rotate(180 12 12)"/></svg>
+            Show (3) more
+          </div>
+        </div>
+        <!-- Wed — awaiting unloading -->
+        <div class="cal-cell">
+          <div class="dcard confirmed" onclick="openModal('135115','awaiting-unloading','20 MT','135115','Reliance Industries Limi...','Ramesh Kumar • 98450...')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135115</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">Reliance Industries Limi...</div>
+            <div class="dcard-driver">Ramesh Kumar • 98450...</div>
+          </div>
+          <div class="dcard confirmed" onclick="openModal('135116','awaiting-unloading','20 MT','135116','Sunrise Logistics','Prakash Rao • 9632108745')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135116</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">Sunrise Logistics</div>
+            <div class="dcard-driver">Prakash Rao • 9632108745</div>
+          </div>
+        </div>
+        <!-- Thu (today) — complete -->
+        <div class="cal-cell today-col">
+          <div class="dcard confirmed" onclick="openModal('135119','complete','20 MT','135119','BFC Transport Agency')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135119</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">BFC Transport Agency</div>
+            <div class="dcard-driver no-driver">No driver</div>
+          </div>
+        </div>
+        <!-- Fri, Sat, Sun: empty -->
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+      </div>
+    </div>
+
+    <!-- ── IN TRANSIT ROW ── -->
+    <div class="row-group">
+      <div class="row-head">
+        <div class="rh-label">
+          <button class="rh-expand"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg></button>
+          <div class="rh-icon transit"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f57c00"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 006 0h6a3 3 0 006 0h2v-5l-3-4z"/></svg></div>
+          <span class="rh-text transit">IN TRANSIT</span>
+        </div>
+        <div class="rh-meta">
+          <div class="tag read-only">READ-ONLY</div>
+          <div class="rh-count">9 Deliveries</div>
+          <div class="rh-mt">55 MT</div>
+        </div>
+      </div>
+      <div class="cal-row">
+        <div class="cal-row-label cal-cell"></div>
+        <!-- Mon: empty -->
+        <div class="cal-cell"></div>
+        <!-- Tue: empty -->
+        <div class="cal-cell"></div>
+        <!-- Wed: transit cards -->
+        <div class="cal-cell">
+          <div class="dcard transit" onclick="openModal('135105','awaiting-unloading','20 MT','135105','Reliance Industries Limi...','Vijay Reddy • 7082282572')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135105</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">Reliance Industries Limi...</div>
+            <div class="dcard-driver">Vijay Reddy • 7082282572</div>
+          </div>
+          <div class="dcard transit" onclick="openModal('135106','awaiting-unloading','20 MT','135106','Reliance Industries Limi...','Ramesh Kumar • 98450...')">
+            <span class="dcard-qty">20</span><span class="dcard-unit">MT</span>
+            <span class="dcard-id">135106</span>
+            <div class="dcard-clear"></div>
+            <div class="dcard-transporter">Reliance Industries Limi...</div>
+            <div class="dcard-driver">Ramesh Kumar • 98450...</div>
+          </div>
+        </div>
+        <!-- Thu (today) -->
+        <div class="cal-cell today-col"></div>
+        <!-- Fri, Sat, Sun -->
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+      </div>
+    </div>
+
+  </div><!-- /calendar -->
+  </div><!-- /cal-scroll -->
+</div><!-- /main -->
+
+<!-- ── MODAL ── -->
+<div class="modal-overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+
+    <div class="modal-head">
+      <div class="modal-title-block">
+        <div class="modal-title" id="modal-title">DELIVERY : 135115</div>
+        <div class="modal-id" id="modal-sub">Reliance Industries Limited • Deal 7567 • Rice Straw</div>
+      </div>
+      <div class="modal-badge mb-confirmed" id="modal-badge">CONFIRMED</div>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+
+    <!-- Deal context card -->
+    <div class="modal-deal-card">
+      <div class="mdc-left">
+        <div class="mdc-name">Reliance Industries Limited</div>
+        <div class="mdc-sub">Deal 7567 • Rice Straw</div>
+      </div>
+      <div>
+        <div class="mdc-rate-label">RATE</div>
+        <div class="mdc-rate">₹2,689/MT</div>
+      </div>
+    </div>
+
+    <!-- Logistics fields -->
+    <div class="modal-fields">
+
+      <!-- Truck size -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#6f6f6f;letter-spacing:0.3px;margin-bottom:8px">TRUCK SIZE</div>
+        <div class="truck-row">
+          <div class="ts" onclick="selTs(this)">5</div>
+          <div class="ts" onclick="selTs(this)">10</div>
+          <div class="ts" onclick="selTs(this)">15</div>
+          <div class="ts sel" onclick="selTs(this)">20</div>
+          <div class="ts" onclick="selTs(this)">25</div>
+          <div class="ts-mt">MT</div>
+        </div>
+      </div>
+
+      <!-- Number of deliveries + Status -->
+      <div class="field-row">
+        <div class="field">
+          <label>DATE</label>
+          <input type="date" value="2026-04-23">
+        </div>
+        <div class="field">
+          <label>STATUS</label>
+          <div class="status-radios">
+            <label class="radio-opt"><input type="radio" name="status" value="planned"> Planned</label>
+            <label class="radio-opt"><input type="radio" name="status" value="confirmed" checked> Confirmed</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transporter -->
+      <div class="field">
+        <label>TRANSPORTER</label>
+        <input type="text" value="Reliance Industries Limited">
+      </div>
+
+      <!-- Truck no + Driver -->
+      <div class="field-row">
+        <div class="field">
+          <label>TRUCK NUMBER</label>
+          <input type="text" value="NL01AK0897">
+        </div>
+        <div class="field">
+          <label>DRIVER NAME</label>
+          <input type="text" value="Ramesh Kumar">
+        </div>
+      </div>
+
+      <!-- Phone -->
+      <div class="field">
+        <label>PHONE</label>
+        <input type="text" value="9845012345">
+      </div>
+    </div>
+
+    <!-- ── Action strip ── -->
+    <div class="action-strip-section" id="action-strip"></div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary">Save Changes</button>
+      <a class="btn-link" href="inward_delivery_detail_v2.html" target="_blank">
+        Full delivery detail
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Pill chip — tick or dash before label, coloured background
+function dataTag(label, done) {
+  if (done) {
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f5e9;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;color:#2e7d32">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <path d="M4 12.5l6 6L20 6" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      ${label}
+    </span>`;
+  }
+  return `<span style="display:inline-flex;align-items:center;gap:5px;background:#f4f4f4;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;color:#8d8d8d">
+    <span style="font-size:13px;line-height:1">—</span>
+    ${label}
+  </span>`;
+}
+
+
+const STRIPS = {
+  'planned-pending': {
+    badge: 'PLANNED', badgeClass: 'mb-confirmed',
+    html: () => `
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${dataTag('Loading', false)}
+          ${dataTag('Unloading', false)}
+        </div>
+      </div>`
+  },
+  'awaiting-loading': {
+    badge: 'CONFIRMED', badgeClass: 'mb-confirmed',
+    html: () => `
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${dataTag('Loading', false)}
+          ${dataTag('Unloading', false)}
+        </div>
+      </div>`
+  },
+  'awaiting-unloading': {
+    badge: 'IN TRANSIT', badgeClass: 'mb-transit',
+    html: () => `
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${dataTag('Loading', true)}
+          ${dataTag('Unloading', false)}
+        </div>
+      </div>`
+  },
+  'complete': {
+    badge: 'DELIVERED', badgeClass: 'mb-delivered',
+    html: () => `
+      <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${dataTag('Loading', true)}
+          ${dataTag('Unloading', true)}
+        </div>
+      </div>`
+  }
+};
+
+function openModal(id, state, qty, delivId, transporter, driver) {
+  document.querySelectorAll('.dcard.active').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  document.getElementById('modal-title').textContent = 'DELIVERY : ' + delivId;
+  document.getElementById('modal-sub').textContent = 'Reliance Industries Limited • Deal 7567 • Rice Straw';
+
+  const s = STRIPS[state];
+  const badge = document.getElementById('modal-badge');
+  badge.textContent = s.badge;
+  badge.className = 'modal-badge ' + s.badgeClass;
+
+  document.getElementById('action-strip').innerHTML = s.html();
+
+  // Update transporter/driver fields if provided
+  const tInputs = document.querySelectorAll('.modal input[type=text]');
+  if (transporter) tInputs[0].value = transporter;
+  if (driver) { const parts = driver.split(' • '); tInputs[1].value = parts[0] || ''; if (parts[1]) tInputs[2].value = parts[1]; }
+
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('show');
+  document.querySelectorAll('.dcard.active').forEach(c => c.classList.remove('active'));
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+function selTs(el) {
+  el.closest('.truck-row').querySelectorAll('.ts').forEach(t => t.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
