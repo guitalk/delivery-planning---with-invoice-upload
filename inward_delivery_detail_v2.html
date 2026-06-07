@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFC — Inward Delivery Detail v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #ececec;
+    font-family: 'Roboto','Helvetica','Arial',sans-serif;
+    color: rgba(0,0,0,0.87);
+    padding: 32px;
+  }
+
+  .bfc {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  }
+
+  /* ── App bar ── */
+  .appbar {
+    background: #2e9d3f; color: #fff; height: 64px;
+    display: flex; align-items: center; padding: 0 20px; gap: 16px;
+  }
+  .icon-btn { background: transparent; border: none; color: inherit; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+  .icon-btn:hover { background: rgba(255,255,255,0.12); }
+  .brand { font-size: 20px; font-weight: 600; }
+  .loc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; cursor: pointer; }
+  .avatar { width: 36px; height: 36px; background: #fff; color: #2e9d3f; border-radius: 50%; display: grid; place-items: center; font-weight: 600; }
+
+  /* ── Sub header ── */
+  .subheader { background: #f5f6f7; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  .back { background: transparent; border: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: rgba(0,0,0,0.7); flex-shrink: 0; }
+  .back:hover { background: rgba(0,0,0,0.06); }
+  .deliv-id { font-size: 15px; font-weight: 700; letter-spacing: 0.6px; color: rgba(0,0,0,0.75); }
+  .badge { padding: 5px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.4px; }
+  .badge-inward  { background: #e3f2fd; color: #1565c0; }
+  .badge-confirmed { background: #fff3e0; color: #e65100; }
+  .badge-delivered { background: #d6efd9; color: #2e7d32; }
+  .actions { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .btn { border: none; font-weight: 600; font-size: 13px; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-outline { background: transparent; color: #d32f2f; border: 1.5px solid #e57373; }
+  .btn-outline:hover { background: rgba(211,47,47,0.04); }
+  .btn-primary { background: #2e9d3f; color: #fff; }
+  .btn-primary:hover { background: #277e34; }
+  .btn-primary:disabled { background: #bdbdbd; cursor: not-allowed; }
+
+
+  /* ── Parties ── */
+  .parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; padding: 24px 24px 8px; }
+  .label-small { font-size: 11px; font-weight: 700; color: rgba(0,0,0,0.45); letter-spacing: 0.8px; margin-bottom: 6px; text-transform: uppercase; }
+  .party-name { font-size: 20px; font-weight: 700; line-height: 1.25; margin-bottom: 12px; }
+  .party-row { display: flex; align-items: center; gap: 7px; font-size: 13px; color: rgba(0,0,0,0.65); margin-bottom: 6px; }
+  .party-link { color: #1976d2; font-size: 13px; font-weight: 500; margin-top: 4px; cursor: pointer; }
+  .ref-label { font-size: 12px; color: rgba(0,0,0,0.5); margin-top: 14px; margin-bottom: 4px; }
+  .ref-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .ref-empty { color: rgba(0,0,0,0.4); }
+  .ref-filled { color: #2e9d3f; font-weight: 500; }
+  .edit-link { display: inline-flex; align-items: center; gap: 3px; color: #2e9d3f; font-weight: 600; font-size: 13px; cursor: pointer; }
+
+  /* ── Tabs ── */
+  .tabs { margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.08); padding: 0 16px; display: flex; gap: 4px; }
+  .tab { padding: 14px 16px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: rgba(0,0,0,0.5); border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.active { color: #2e9d3f; border-bottom-color: #2e9d3f; }
+  .tab:hover:not(.active) { color: rgba(0,0,0,0.75); }
+
+  /* ── Body ── */
+  .body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Cards ── */
+  .card { border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+  .card-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.07); }
+  .card-title { font-size: 14px; font-weight: 700; color: rgba(0,0,0,0.78); flex: 1; }
+  .card-body { padding: 16px 18px; }
+
+  /* ── Detail table ── */
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .detail-table th { text-align: left; padding: 10px 12px; background: #f5f6f7; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: rgba(0,0,0,0.55); border-bottom: 1px solid rgba(0,0,0,0.08); }
+  .detail-table td { padding: 12px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); color: rgba(0,0,0,0.78); }
+  .detail-table tr:last-child td { border-bottom: none; }
+
+  /* ── Info grid ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 32px; font-size: 13px; }
+  .info-row { display: flex; flex-direction: column; gap: 2px; }
+  .info-label { font-size: 11px; color: rgba(0,0,0,0.45); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-val { color: rgba(0,0,0,0.8); font-weight: 500; }
+  .info-link { color: #1976d2; font-weight: 500; cursor: pointer; }
+
+  /* ── Loading / Unloading sections ── */
+  .section-card { border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+
+  .invoice-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.07); background: #e3f2fd; }
+  .invoice-body   { padding: 20px 18px; background: #e3f2fd; }
+
+  .loading-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.07); background: #fffde7; }
+  .loading-body   { padding: 20px 18px; background: #fffde7; }
+
+  .unloading-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.07); background: #f3e5f5; }
+  .unloading-body   { padding: 20px 18px; background: #f3e5f5; }
+
+  .section-title { font-size: 14px; font-weight: 700; color: rgba(0,0,0,0.78); flex: 1; }
+  .section-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 10px; }
+  .badge-info     { background: #e3f2fd; color: #1565c0; }
+  .badge-pending  { background: #fff3e0; color: #e65100; }
+  .badge-complete { background: #d6efd9; color: #2e7d32; }
+
+  /* ── Vendor invoice 2-state UX ── */
+  .inv-upload-area { border: 2px dashed #1565c0; border-radius: 10px; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; background: rgba(255,255,255,0.55); }
+  .inv-upload-area:hover { background: rgba(255,255,255,0.8); }
+  .inv-upload-title { font-size: 15px; font-weight: 600; color: rgba(0,0,0,0.75); margin-top: 4px; }
+  .inv-upload-sub { font-size: 12px; color: rgba(0,0,0,0.4); letter-spacing: 0.3px; }
+  .inv-or-row { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+  .inv-or-line { flex: 1; height: 1px; background: rgba(0,0,0,0.13); }
+  .inv-or-text { font-size: 13px; color: rgba(0,0,0,0.38); }
+  .inv-manual-btn { width: 100%; padding: 13px; border: 1px solid rgba(0,0,0,0.18); border-radius: 8px; background: rgba(255,255,255,0.6); font-size: 13px; font-weight: 500; color: rgba(0,0,0,0.6); cursor: pointer; font-family: inherit; }
+  .inv-manual-btn:hover { background: #fff; border-color: rgba(0,0,0,0.3); }
+
+  .inv-file-card { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+  .inv-file-thumb { width: 48px; height: 48px; background: #f5f5f5; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.08); }
+  .inv-file-thumb-label { font-size: 9px; font-weight: 700; color: rgba(0,0,0,0.4); letter-spacing: 0.5px; }
+  .inv-file-info { flex: 1; }
+  .inv-file-name { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.8); }
+  .inv-file-meta { font-size: 12px; color: rgba(0,0,0,0.4); margin-top: 2px; }
+  .inv-view-link { color: #1976d2; text-decoration: none; font-weight: 500; }
+  .inv-view-link:hover { text-decoration: underline; }
+
+  .inv-sub-label { font-size: 13px; font-weight: 700; color: rgba(0,0,0,0.7); margin-bottom: 12px; margin-top: 4px; }
+  .inv-lineitems-empty { background: rgba(255,255,255,0.55); border: 1px dashed rgba(0,0,0,0.15); border-radius: 8px; padding: 16px 18px; font-size: 12px; color: rgba(0,0,0,0.45); margin-top: 8px; }
+  .inv-add-btn { font-size: 12px; padding: 6px 14px; }
+
+  /* ── Info note ── */
+  .info-note { display: flex; align-items: flex-start; gap: 9px; background: rgba(255,255,255,0.6); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: rgba(0,0,0,0.5); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.08); }
+
+  /* ── Form fields ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 4px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.5); }
+  .field input { padding: 9px 12px; border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; font-size: 13px; font-family: inherit; color: rgba(0,0,0,0.8); background: #fff; outline: none; transition: border-color 0.15s; }
+  .field input:focus { border-color: #2e9d3f; box-shadow: 0 0 0 2px rgba(46,157,63,0.12); }
+  .field input.auto-calc { background: #f5f5f5; color: rgba(0,0,0,0.5); }
+  .field input[readonly] { background: #f5f5f5; color: rgba(0,0,0,0.5); cursor: default; }
+  .field .hint { font-size: 11px; color: rgba(0,0,0,0.38); }
+
+  /* Read-only loading fields (for delivered state) */
+  .field input.readonly-filled { background: rgba(255,255,255,0.5); color: rgba(0,0,0,0.65); border-color: rgba(0,0,0,0.12); cursor: default; }
+
+  /* ── Step action ── */
+  .step-action { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.08); display: flex; gap: 12px; align-items: center; }
+
+  /* ── Delta / settlement ── */
+  .delta-wrap { margin-top: 16px; }
+  .delta-label-row { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: rgba(0,0,0,0.4); margin-bottom: 8px; }
+  .delta-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.09); border-radius: 6px; padding: 9px 14px; margin-bottom: 6px; font-size: 13px; }
+  .delta-key { color: rgba(0,0,0,0.55); }
+  .delta-val { font-weight: 700; }
+  .delta-debit  { color: #d32f2f; }
+  .delta-credit { color: #2e7d32; }
+  .delta-zero   { color: rgba(0,0,0,0.6); }
+
+  /* ── Banners ── */
+  .banner-warn { display: flex; align-items: flex-start; gap: 9px; background: #fff8e1; border-radius: 6px; padding: 11px 14px; font-size: 13px; color: #f57f17; margin-top: 10px; }
+  .banner-ok   { display: flex; align-items: flex-start; gap: 9px; background: #e8f5e9; border-radius: 6px; padding: 11px 14px; font-size: 13px; color: #2e7d32; margin-top: 10px; }
+  .banner-success { display: flex; align-items: flex-start; gap: 9px; background: #e8f5e9; border-radius: 6px; padding: 14px 16px; font-size: 14px; color: #1b5e20; }
+  .badge-transit { background: #e3f2fd; color: #1565c0; }
+
+  /* ── Proto bar ── */
+  .proto-bar { background: #1a237e; color: #fff; padding: 10px 24px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .proto-bar span { opacity: 0.65; }
+  .proto-btn { border: 1.5px solid rgba(255,255,255,0.3); background: transparent; color: #fff; padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .proto-btn.active { background: rgba(255,255,255,0.2); border-color: #fff; }
+  .proto-btn:hover { background: rgba(255,255,255,0.12); }
+</style>
+</head>
+<body>
+<div class="bfc">
+
+  <!-- Prototype bar -->
+  <div class="proto-bar">
+    <span>Prototype — state:</span>
+    <button class="proto-btn" id="btn-confirmed" onclick="setState('confirmed')">Confirmed</button>
+    <button class="proto-btn" id="btn-transit" onclick="setState('transit')">In Transit (loading saved)</button>
+    <button class="proto-btn" id="btn-delivered" onclick="setState('delivered')">Delivered (both recorded)</button>
+  </div>
+
+  <!-- App bar -->
+  <div class="appbar">
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg></button>
+    <span class="brand">BiofuelCircle</span>
+    <div class="loc">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+      Bhiwani Biomass Bank, Haryana
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+    </div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V10c0-3.07-1.63-5.64-4.5-6.32V3a1.5 1.5 0 00-3 0v.68C7.64 4.36 6 6.92 6 10v6l-2 2v1h16v-1l-2-2z"/></svg></button>
+    <div class="avatar">G</div>
+  </div>
+
+  <!-- Sub header -->
+  <div class="subheader">
+    <button class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+    <div class="deliv-id">DELIVERY : 135115</div>
+    <div class="badge" id="status-badge">CONFIRMED</div>
+    <div class="actions">
+      <button class="btn btn-outline">Mark as Cancelled</button>
+    </div>
+  </div>
+
+  <!-- Parties -->
+  <div class="parties">
+    <div>
+      <div class="label-small">Seller</div>
+      <div class="party-name">Shree Somvil Industries</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>Mauda, Maharashtra</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.98.98 0 00-1.01.24l-1.57 1.97a15.05 15.05 0 01-6.59-6.58l1.97-1.58a.97.97 0 00.24-1A11.36 11.36 0 018.95 4.5c0-.55-.45-1-1-1H4.19C3.65 3.5 3 3.74 3 4.5A17 17 0 0019.5 21c.72 0 1-.63 1-1.18v-3.45c0-.55-.45-.99-.99-.99z"/></svg>9876543210</div>
+      <div class="ref-label">Reference No.</div>
+      <div class="ref-row"><span class="ref-empty">--</span><span class="edit-link" style="margin-left:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit</span></div>
+    </div>
+    <div>
+      <div class="label-small">Buyer</div>
+      <div class="party-name">BFC Supply Private Limited</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>Bhiwani, Haryana</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.98.98 0 00-1.01.24l-1.57 1.97a15.05 15.05 0 01-6.59-6.58l1.97-1.58a.97.97 0 00.24-1A11.36 11.36 0 018.95 4.5c0-.55-.45-1-1-1H4.19C3.65 3.5 3 3.74 3 4.5A17 17 0 0019.5 21c.72 0 1-.63 1-1.18v-3.45c0-.55-.45-.99-.99-.99z"/></svg>2048522522</div>
+      <div class="party-link">Inward Product Deal (11610)</div>
+      <div class="ref-label">Reference No.</div>
+      <div class="ref-row"><span class="ref-filled">240948177-N-2</span><span class="edit-link" style="margin-left:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit</span></div>
+    </div>
+    <div>
+      <div class="label-small">Transporter</div>
+      <div class="party-name">Viralbhai Vaskui</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>Navsari, Gujarat</div>
+      <div class="party-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.98.98 0 00-1.01.24l-1.57 1.97a15.05 15.05 0 01-6.59-6.58l1.97-1.58a.97.97 0 00.24-1A11.36 11.36 0 018.95 4.5c0-.55-.45-1-1-1H4.19C3.65 3.5 3 3.74 3 4.5A17 17 0 0019.5 21c.72 0 1-.63 1-1.18v-3.45c0-.55-.45-.99-.99-.99z"/></svg>9426137007</div>
+      <div class="party-link">Transport Deal (12616)</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-2 16H8v-2h4v2zm4-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>Overview</div>
+    <div class="tab"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>Cashflow</div>
+    <div class="tab"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>Invoices</div>
+    <div class="tab"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 006 0h8a3 3 0 006 0h2v-5l-3-4z"/></svg>Delivery Challan</div>
+    <div class="tab"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>History</div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Delivery Details -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" style="color:#2e9d3f"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 006 0h8a3 3 0 006 0h2v-5l-3-4z"/></svg>
+        <div class="card-title">Delivery Details</div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="detail-table">
+          <thead><tr>
+            <th>Delivery ID</th><th>Date & Time</th><th>Driver & Contact</th>
+            <th>Vehicle</th><th>Planned Qty</th><th>Actual Qty</th>
+          </tr></thead>
+          <tbody><tr>
+            <td><strong>135115</strong></td>
+            <td>06 Jun 2026<br><span style="font-size:12px;color:rgba(0,0,0,0.4)">10:30 AM</span></td>
+            <td>Ramesh Kumar<br><span style="font-size:12px;color:rgba(0,0,0,0.4)">9845012345</span></td>
+            <td>NL01AK0897</td>
+            <td>20 MT</td>
+            <td id="actual-qty" style="color:rgba(0,0,0,0.35)">—</td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Deal info row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="color:#1976d2"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+          <div class="card-title">Inward Product Deal Details</div>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-row"><span class="info-label">Deal ID</span><span class="info-link">11610</span></div>
+            <div class="info-row"><span class="info-label">Rate</span><span class="info-val">₹3,200 / MT</span></div>
+            <div class="info-row"><span class="info-label">Product</span><span class="info-val">Paddy Straw</span></div>
+            <div class="info-row"><span class="info-label">Total Quantity</span><span class="info-val">800 MT</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="color:#e65100"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 006 0h8a3 3 0 006 0h2v-5l-3-4z"/></svg>
+          <div class="card-title">Transport Deal Details</div>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-row"><span class="info-label">Transport Deal ID</span><span class="info-link">12616</span></div>
+            <div class="info-row"><span class="info-label">Pricing Term</span><span class="info-val">₹800 / Per Trip</span></div>
+            <div class="info-row"><span class="info-label">Transporter</span><span class="info-val">Viralbhai Vaskui</span></div>
+            <div class="info-row"><span class="info-label">Vehicle Type</span><span class="info-val">Tractor</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VENDOR INVOICE ── -->
+    <div class="section-card">
+      <div class="invoice-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#1565c0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11zm-3-7H9v-2h6v2zm0 4H9v-2h6v2z"/></svg>
+        <div class="section-title">Vendor Invoice</div>
+      </div>
+      <div class="invoice-body">
+
+        <!-- State 1: upload prompt -->
+        <div id="inv-upload-prompt">
+          <div class="inv-upload-area" onclick="invoiceUploaded()">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="color:#1565c0"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+            <div class="inv-upload-title">Click to upload, or to use camera</div>
+            <div class="inv-upload-sub">PDF, JPG, PNG • UP TO 10 MB</div>
+          </div>
+          <div class="inv-or-row">
+            <span class="inv-or-line"></span>
+            <span class="inv-or-text">or</span>
+            <span class="inv-or-line"></span>
+          </div>
+          <button class="inv-manual-btn" onclick="invoiceManual()">I don't have an invoice - enter manually</button>
+        </div>
+
+        <!-- State 2: form (shown after upload or manual entry) -->
+        <div id="inv-form" style="display:none">
+
+          <!-- File preview (only when uploaded) -->
+          <div id="inv-file-card" class="inv-file-card" style="display:none">
+            <div class="inv-file-thumb">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:#e53935"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+              <span class="inv-file-thumb-label">INV</span>
+            </div>
+            <div class="inv-file-info">
+              <div class="inv-file-name">Somvil_Industries_INV-2024-889.pdf</div>
+              <div class="inv-file-meta">284 KB · uploaded just now · <a href="#" class="inv-view-link">View original</a></div>
+            </div>
+          </div>
+
+          <!-- Billing fields -->
+          <div class="inv-sub-label">Billing</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="field">
+              <label>Vendor's Invoice No.</label>
+              <input type="text" id="inv-no" placeholder="e.g. INV-2024-889">
+              <span id="inv-autofill-hint" class="hint" style="color:#2e9d3f;display:none">Auto-filled from upload</span>
+            </div>
+            <div class="field"><label>Invoice Date</label><input type="date" id="inv-date"></div>
+            <div class="field"><label>Payment Due Date</label><input type="date" id="inv-due"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── LOADING ── -->
+    <div class="section-card">
+      <div class="loading-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#f57f17"><path d="M5 20h14v-2H5v2zm0-10h4v6h6v-6h4l-7-7-7 7z"/></svg>
+        <div class="section-title">Loading</div>
+      </div>
+      <div class="loading-body">
+
+        <div class="form-grid">
+          <div class="field"><label>WB Receipt ID</label><input type="text" id="l-wb" placeholder="e.g. WB-202"></div>
+          <div class="field"><label>Number of Bales</label><input type="number" id="l-bales" placeholder="0"></div>
+          <div class="field"><label>Gross Weight (kg)</label><input type="number" id="l-gross" placeholder="0.00" oninput="calcNet('l')"></div>
+          <div class="field"><label>Tare Weight (kg)</label><input type="number" id="l-tare" placeholder="0.00" oninput="calcNet('l')"></div>
+          <div class="field">
+            <label>Net Weight (kg)</label>
+            <input type="number" id="l-net" class="auto-calc" placeholder="Auto-calculated" readonly>
+            <span class="hint">Gross − Tare</span>
+          </div>
+          <div class="field"><label>Moisture (%)</label><input type="number" id="l-moisture" placeholder="0.0" step="0.1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UNLOADING — BFC's action ── -->
+    <div class="section-card">
+      <div class="unloading-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#8e24aa"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/></svg>
+        <div class="section-title">Unloading</div>
+      </div>
+      <div class="unloading-body">
+
+        <div class="form-grid">
+          <div class="field"><label>WB Receipt ID</label><input type="text" id="u-wb" placeholder="e.g. WB-2346"></div>
+          <div class="field"><label>Number of Bales</label><input type="number" id="u-bales" placeholder="0"></div>
+          <div class="field"><label>Gross Weight (kg)</label><input type="number" id="u-gross" placeholder="0.00" oninput="calcNet('u'); calcDelta()"></div>
+          <div class="field"><label>Tare Weight (kg)</label><input type="number" id="u-tare" placeholder="0.00" oninput="calcNet('u'); calcDelta()"></div>
+          <div class="field">
+            <label>Net Weight (kg)</label>
+            <input type="number" id="u-net" class="auto-calc" placeholder="Auto-calculated" readonly>
+            <span class="hint">Gross − Tare</span>
+          </div>
+          <div class="field"><label>Moisture (%)</label><input type="number" id="u-moisture" placeholder="0.0" step="0.1" oninput="calcDelta()"></div>
+        </div>
+
+        <!-- Live delta -->
+        <div id="delta-wrap" class="delta-wrap" style="display:none">
+          <div class="delta-label-row">Settlement Impact vs Loading</div>
+          <div class="delta-row"><span class="delta-key">Vendor loading qty</span><span id="d-load" class="delta-val">—</span></div>
+          <div class="delta-row"><span class="delta-key">Your unloading qty</span><span id="d-unload" class="delta-val">—</span></div>
+          <div class="delta-row"><span class="delta-key">Difference</span><span id="d-diff" class="delta-val">—</span></div>
+          <div id="banner-debit" class="banner-warn" style="display:none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span id="banner-debit-text"></span>
+          </div>
+          <div id="banner-match" class="banner-ok" style="display:none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 15l-5-5 1.4-1.4L10 14.2l6.6-6.6L18 9l-8 8z"/></svg>
+            Quantities match — no debit note required.
+          </div>
+        </div>
+
+        <div class="step-action">
+          <button class="btn btn-outline" id="btn-update" onclick="markDelivered()">Update</button>
+          <button class="btn btn-primary" id="btn-complete" onclick="markDelivered()">Complete</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Delivered success banner -->
+    <div id="delivered-banner" class="banner-success" style="display:none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 15l-5-5 1.4-1.4L10 14.2l6.6-6.6L18 9l-8 8z"/></svg>
+      <div>
+        <strong>Delivery complete</strong> — recorded 06 Jun 2026, 3:45 PM.
+        Net received: <strong id="final-net">—</strong> kg at <strong id="final-moisture">—</strong>% moisture.
+        <span id="final-debit"></span>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /bfc -->
+
+<script>
+  function setState(s) {
+    document.querySelectorAll('.proto-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + s).classList.add('active');
+
+    const badge = document.getElementById('status-badge');
+
+    // Reset common fields
+    const resetFields = () => {
+      ['inv-no','inv-date','inv-due','l-wb','l-bales','l-gross','l-tare','l-moisture','u-wb','u-bales','u-gross','u-tare','u-moisture'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      document.getElementById('l-net').value = '';
+      document.getElementById('u-net').value = '';
+      // Invoice UI: back to upload prompt
+      document.getElementById('inv-upload-prompt').style.display = 'block';
+      document.getElementById('inv-form').style.display = 'none';
+      document.getElementById('inv-file-card').style.display = 'none';
+      document.getElementById('inv-autofill-hint').style.display = 'none';
+      document.getElementById('actual-qty').textContent = '—';
+      document.getElementById('actual-qty').style.color = 'rgba(0,0,0,0.35)';
+      document.getElementById('delta-wrap').style.display = 'none';
+      document.getElementById('delivered-banner').style.display = 'none';
+      document.getElementById('btn-complete').style.display = 'inline-flex';
+      document.getElementById('btn-update').style.display = 'inline-flex';
+    };
+
+    if (s === 'confirmed') {
+      badge.textContent = 'CONFIRMED';
+      badge.className = 'badge badge-confirmed';
+      resetFields();
+
+    } else if (s === 'transit') {
+      badge.textContent = 'IN TRANSIT';
+      badge.className = 'badge badge-transit';
+      resetFields();
+      // Show invoice form pre-filled (uploaded state)
+      document.getElementById('inv-upload-prompt').style.display = 'none';
+      document.getElementById('inv-form').style.display = 'block';
+      document.getElementById('inv-file-card').style.display = 'flex';
+      document.getElementById('inv-no').value = 'INV-2024-889';
+      document.getElementById('inv-date').value = '2026-06-06';
+      document.getElementById('inv-due').value = '2026-06-20';
+      document.getElementById('inv-autofill-hint').style.display = 'block';
+      // Loading fields
+      document.getElementById('l-wb').value = 'WB-202';
+      document.getElementById('l-bales').value = '15';
+      document.getElementById('l-gross').value = '6830';
+      document.getElementById('l-tare').value = '4230';
+      document.getElementById('l-net').value = '2600';
+      document.getElementById('l-moisture').value = '10.0';
+
+    } else { // delivered
+      badge.textContent = 'DELIVERED';
+      badge.className = 'badge badge-delivered';
+      resetFields();
+      // Invoice form pre-filled
+      document.getElementById('inv-upload-prompt').style.display = 'none';
+      document.getElementById('inv-form').style.display = 'block';
+      document.getElementById('inv-file-card').style.display = 'flex';
+      document.getElementById('inv-no').value = 'INV-2024-889';
+      document.getElementById('inv-date').value = '2026-06-06';
+      document.getElementById('inv-due').value = '2026-06-20';
+      document.getElementById('inv-autofill-hint').style.display = 'block';
+      // Loading + unloading fields
+      document.getElementById('l-wb').value = 'WB-202';
+      document.getElementById('l-bales').value = '15';
+      document.getElementById('l-gross').value = '6830';
+      document.getElementById('l-tare').value = '4230';
+      document.getElementById('l-net').value = '2600';
+      document.getElementById('l-moisture').value = '10.0';
+      document.getElementById('u-wb').value = '2346';
+      document.getElementById('u-bales').value = '15';
+      document.getElementById('u-gross').value = '6750';
+      document.getElementById('u-tare').value = '4160';
+      document.getElementById('u-net').value = '2590';
+      document.getElementById('u-moisture').value = '8.0';
+      document.getElementById('actual-qty').textContent = '2590 kg';
+      document.getElementById('actual-qty').style.color = '';
+      // Delta
+      document.getElementById('delta-wrap').style.display = 'block';
+      document.getElementById('d-load').textContent = '2600 kg';
+      document.getElementById('d-unload').textContent = '2590 kg';
+      const diffEl = document.getElementById('d-diff');
+      diffEl.textContent = '−10 kg';
+      diffEl.className = 'delta-val delta-debit';
+      document.getElementById('banner-debit').style.display = 'flex';
+      document.getElementById('banner-debit-text').textContent = 'Debit note raised: 10 kg shortfall = ₹320 at ₹3,200/MT. Ref: DN-135115-001';
+      document.getElementById('banner-match').style.display = 'none';
+      document.getElementById('delivered-banner').style.display = 'flex';
+      document.getElementById('final-net').textContent = '2590';
+      document.getElementById('final-moisture').textContent = '8.0';
+      document.getElementById('final-debit').innerHTML = 'Debit note: <strong>DN-135115-001</strong> (₹320).';
+      document.getElementById('btn-complete').style.display = 'none';
+      document.getElementById('btn-update').style.display = 'none';
+    }
+  }
+
+  function calcNet(p) {
+    const g = parseFloat(document.getElementById(p+'-gross').value) || 0;
+    const t = parseFloat(document.getElementById(p+'-tare').value) || 0;
+    document.getElementById(p+'-net').value = (g > 0 && t > 0) ? (g - t) : '';
+  }
+
+  function calcDelta() {
+    const lNet = parseFloat(document.getElementById('l-net').value) || 0;
+    const uNet = parseFloat(document.getElementById('u-net').value) || 0;
+    if (lNet <= 0 || uNet <= 0) return;
+    const diff = uNet - lNet;
+    document.getElementById('delta-wrap').style.display = 'block';
+    document.getElementById('d-load').textContent = lNet + ' kg';
+    document.getElementById('d-unload').textContent = uNet + ' kg';
+    const diffEl = document.getElementById('d-diff');
+    if (diff < 0) {
+      diffEl.textContent = diff + ' kg';
+      diffEl.className = 'delta-val delta-debit';
+      const amt = Math.abs(diff / 1000 * 3200).toFixed(0);
+      document.getElementById('banner-debit').style.display = 'flex';
+      document.getElementById('banner-debit-text').textContent = `Debit note will be raised: ${Math.abs(diff)} kg shortfall = ₹${amt} at ₹3,200/MT.`;
+      document.getElementById('banner-match').style.display = 'none';
+    } else if (diff > 0) {
+      diffEl.textContent = '+' + diff + ' kg';
+      diffEl.className = 'delta-val delta-credit';
+      document.getElementById('banner-debit').style.display = 'none';
+      document.getElementById('banner-match').style.display = 'none';
+    } else {
+      diffEl.textContent = '0 kg';
+      diffEl.className = 'delta-val delta-zero';
+      document.getElementById('banner-debit').style.display = 'none';
+      document.getElementById('banner-match').style.display = 'flex';
+    }
+  }
+
+  function invoiceUploaded() {
+    document.getElementById('inv-upload-prompt').style.display = 'none';
+    document.getElementById('inv-form').style.display = 'block';
+    document.getElementById('inv-file-card').style.display = 'flex';
+    document.getElementById('inv-no').value = 'INV-2024-889';
+    document.getElementById('inv-autofill-hint').style.display = 'block';
+  }
+
+  function invoiceManual() {
+    document.getElementById('inv-upload-prompt').style.display = 'none';
+    document.getElementById('inv-form').style.display = 'block';
+    document.getElementById('inv-file-card').style.display = 'none';
+    document.getElementById('inv-autofill-hint').style.display = 'none';
+  }
+
+  function markDelivered() {
+    const uNet = document.getElementById('u-net').value;
+    const uMoisture = document.getElementById('u-moisture').value;
+    if (!uNet) { alert('Please enter unloading weighbridge data.'); return; }
+    document.getElementById('final-net').textContent = uNet;
+    document.getElementById('final-moisture').textContent = uMoisture || '—';
+    // figure out debit note text
+    const lNet = parseFloat(document.getElementById('l-net').value) || 0;
+    const diff = parseFloat(uNet) - lNet;
+    if (lNet > 0 && diff < 0) {
+      const amt = Math.abs(diff / 1000 * 3200).toFixed(0);
+      document.getElementById('final-debit').innerHTML = ` Debit note raised: <strong>₹${amt}</strong>.`;
+    } else {
+      document.getElementById('final-debit').textContent = '';
+    }
+    setState('delivered');
+  }
+
+  // Init
+  setState('confirmed');
+</script>
+</body>
+</html>
